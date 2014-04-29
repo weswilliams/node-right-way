@@ -5,7 +5,9 @@
   "author": "Wes Williams wes.williamz@gmail.com http://github.com/weswilliams",
   "dependencies": {
     "request": "~2.34.0",
-    "cheerio": "~0.15.0"
+    "cheerio": "~0.15.0",
+    "file": "~0.2.2",
+    "async": "~0.7.0"
   },
   "devDependencies": {
     "nodeunit": "~0.8.6"
