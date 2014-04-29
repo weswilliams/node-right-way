@@ -1,0 +1,9 @@
+{
+  "name": "book-tools",
+  "version": "0.1.0",
+  "description": "tools for creating an ebook database",
+  "author": "Wes Williams wes.williamz@gmail.com http://github.com/weswilliams",
+  "dependencies": {
+    "request": "~2.34.0"
+  }
+}
