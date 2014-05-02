@@ -1,4 +1,5 @@
 'use strict';
+console.log('starting server at ' + (new Date()).toLocaleString());
 const
   express = require('express'),
   logger = require('morgan'),

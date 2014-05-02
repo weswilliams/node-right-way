@@ -28,8 +28,8 @@ module.exports = function(config, app) {
       }
     });
     
-    deferred.promise.then(function(args) {  
-      let couchRes = args[0], body = args[1];
+    deferred.promise.spread(function(couchRes, body) {
+//      let couchRes = args[0], body = args[1];
       console.log('couch resp: ' + couchRes + ', body: ' + body);
       res.json(couchRes.statusCode, body);
     }, function(err) {  
