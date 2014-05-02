@@ -10,7 +10,9 @@ module.exports = function(config, app) {
    * create a new bundle with the specified name
    * curl -X POST http://localhost:3000/api/bundle?name=<name>
    */
-  app.post('/api/bundle', function(req, res) { 
+  console.log('POST bundle usage: curl -X POST http://localhost:3000/api/bundle?name=<name>');
+  app.post('/api/bundle', function(req, res) {
+    console.log('request to create bundle');
     let deferred = Q.defer();  
     request.post({
       url: config.b4db,
@@ -18,14 +20,17 @@ module.exports = function(config, app) {
     }, function(err, couchRes, body) {
 	
       if (err) {
+        console.log('no couch resp: ' + err);
         deferred.reject(err);  
       } else {
+        console.log('couch resp');
         deferred.resolve([couchRes, body]);  
       }
     });
     
     deferred.promise.then(function(args) {  
       let couchRes = args[0], body = args[1];
+      console.log('couch resp: ' + couchRes + ', body: ' + body);
       res.json(couchRes.statusCode, body);
     }, function(err) {  
       res.json(502, { error: "bad_gateway", reason: err.code });
@@ -51,15 +56,20 @@ module.exports = function(config, app) {
    * set the specified bundle's name with the specified name
    * curl -X PUT http://localhost:3000/api/bundle/<id>/name/<name>
    */
+  console.log('PUT /api/bundle: curl -X PUT http://localhost:3000/api/bundle/<id>/name/<name>');
   app.put('/api/bundle/:id/name/:name', function(req, res) {
+    console.log('name update request');
     Q.nfcall(request.get, config.b4db + '/' + req.params.id)
       .then(function(args) {  
         let couchRes = args[0], bundle = JSON.parse(args[1]);
+        console.log('tried to retrieve bundle: res: ' + couchRes +
+          ', bundle: ' + bundle);
         if (couchRes.statusCode !== 200) {
           return [couchRes, bundle];  
         }
         
         bundle.name = req.params.name;
+        console.log('updating bundle name: ' + bundle);
         return Q.nfcall(request.put, {  
           url: config.b4db + '/' + req.params.id,
           json: bundle
@@ -69,7 +79,8 @@ module.exports = function(config, app) {
         let couchRes = args[0], body = args[1];
         res.json(couchRes.statusCode, body);
       })
-      .catch(function(err) {  
+      .catch(function(err) {
+        console.log('error: ' + err);
         res.json(502, { error: "bad_gateway", reason: err.code });
       })
       .done();
