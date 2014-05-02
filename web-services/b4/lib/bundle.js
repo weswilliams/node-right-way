@@ -43,8 +43,8 @@ module.exports = function(config, app) {
    */
   app.get('/api/bundle/:id', function(req, res) {  
     Q.nfcall(request.get, config.b4db + '/' + req.params.id)  
-      .then(function(args) {
-        let couchRes = args[0], bundle = JSON.parse(args[1]);
+      .spread(function(couchRes, body) {
+        let bundle = JSON.parse(body);
         res.json(couchRes.statusCode, bundle);
       }, function(err) {
         res.json(502, { error: "bad_gateway", reason: err.code });
@@ -60,8 +60,8 @@ module.exports = function(config, app) {
   app.put('/api/bundle/:id/name/:name', function(req, res) {
     console.log('name update request');
     Q.nfcall(request.get, config.b4db + '/' + req.params.id)
-      .then(function(args) {  
-        let couchRes = args[0], bundle = JSON.parse(args[1]);
+      .spread(function(couchRes, body) {
+        let bundle = JSON.parse(body);
         console.log('tried to retrieve bundle: res: ' + couchRes +
           ', bundle: ' + bundle);
         if (couchRes.statusCode !== 200) {
@@ -75,8 +75,7 @@ module.exports = function(config, app) {
           json: bundle
         });
       })
-      .then(function(args) {  
-        let couchRes = args[0], body = args[1];
+      .spread(function(couchRes, body) {
         res.json(couchRes.statusCode, body);
       })
       .catch(function(err) {
