@@ -17,7 +17,7 @@ const
   Q = require('q'),
   underscore = require('underscore');
 
-function asyncRequest(request, res) {
+function asyncRequest(request) {
   let qRequest = Q.denodeify(request);
   return Q.async(function*() {
     console.log('args: ' + arguments);
@@ -27,8 +27,10 @@ function asyncRequest(request, res) {
         body = values[1];
     if (couchRes.statusCode !== 200) {
       console.log('couch err: ' + couchRes.statusCode);
-      res.json(couchRes.statusCode, JSON.parse(body));
-      return;
+      throw {
+        code: couchRes.statusCode,
+        reason: JSON.parse(body)
+      };
     }
     console.log("requested value: " + body);
     return yield JSON.parse(body);
@@ -60,20 +62,19 @@ module.exports = function (config, app) {
     if (!underscore.contains(availableViewNames, viewName)) {
       throw {
         code: 400,
-        error: 'view not available',
-        reason: ''
+        reason: 'view not available'
       };
     }
   }
 
   app.get('/api/search/book/by_:view', function (req, res) {
-    let qRequest = Q.denodeify(request);
     Q.async(function*() {
-      let views, filteredViews, values, couchRes, body, books = {};
+      let qRequest, views, filteredViews, values, couchRes, body, books = {};
       views = yield findViews(res)();
       filteredViews = filterViews(views, 'by_');
       viewNotAvailable(filteredViews, 'by_' + req.params.view);
-      values = yield qRequest({
+      qRequest = asyncRequest(request, res);
+      body = yield qRequest({
         method: 'GET',
         url: config.bookdb + '_design/books/_view/by_' + req.params.view,
         qs: {
@@ -82,21 +83,18 @@ module.exports = function (config, app) {
           include_docs: true
         }
       });
-      couchRes = values[0];
-      body = values[1];
-      if (couchRes.statusCode !== 200) {
-        res.json(couchRes.statusCode, JSON.parse(body));
-        return;
-      }
-
-      JSON.parse(body).rows.forEach(function (elem) {
+      body.rows.forEach(function (elem) {
         books[elem.doc._id] = elem.doc.title;
       });
       res.json(books);
     })()
       .catch(function (err) {
         console.log('error finding available books: ' + JSON.stringify(err));
-        res.json(502, { error: "bad_gateway", reason: err.code });
+        if (err.reason && err.code) {
+          res.json(err.code, err);
+        } else {
+          res.json(502, { error: "bad_gateway", reason: err.code });
+        }
       });
   });
 };
