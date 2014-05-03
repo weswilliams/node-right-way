@@ -17,30 +17,42 @@ const
   Q = require('q'),
   underscore = require('underscore');
 
+function asyncRequest(request, res) {
+  let qRequest = Q.denodeify(request);
+  return Q.async(function*(path) {
+    console.log('path: ' + path);
+    let
+      args = yield qRequest(path),
+        couchRes = args[0],
+        body = args[1];
+    if (couchRes.statusCode !== 200) {
+      console.log('couch err: ' + couchRes.statusCode);
+      res.json(couchRes.statusCode, JSON.parse(body));
+      return;
+    }
+    console.log("requested value: " + body);
+    return yield JSON.parse(body);
+  });
+}
+
 module.exports = function (config, app) {
 
   function findViews(callback, res) {
-    console.log('find books');
-    let get = Q.denodeify(request.get);
+    console.log('find views');
+    let get = asyncRequest(request.get, res);
     Q.async(function*() {
-      let
-        args = yield get(config.bookdb + '_design/books/'),
-        couchRes = args[0],
-        body = args[1];
-      if (couchRes.statusCode !== 200) {
-        console.log('couch error finding available views: ' + couchRes.statusCode);
-        callback(couchRes.statusCode, JSON.parse(body));
-        return;
-      }
-      callback(null, JSON.parse(body).views);
-    })().catch(function(err) {
-      console.log('error finding available views: ' + err);
-      callback(502, { error: "bad_gateway", reason: err.code });
-    });
+      let views = yield get(config.bookdb + '_design/books/');
+      console.log("views: " + JSON.stringify(views));
+      callback(null, views.views);
+    })()
+      .catch(function (err) {
+        console.log('error finding available views: ' + err);
+        callback(502, { error: "bad_gateway", reason: err.code });
+      });
   }
 
   function filterViews(filterBy, callback) {
-    return function(err, views) {
+    return function (err, views) {
       if (err) {
         console.log(err);
         callback(err);
@@ -49,7 +61,7 @@ module.exports = function (config, app) {
       let filteredViews = underscore.chain(views)
         .keys(function (name) {
           return name.indexOf(filterBy) === 0;
-      }).value();
+        }).value();
       console.log('filtered views: ' + filteredViews);
       callback(null, filteredViews);
     };
@@ -60,7 +72,7 @@ module.exports = function (config, app) {
   }
 
   app.get('/api/search/book/by_:view', function (req, res) {
-    findViews(filterViews('by_', function(err, availableViews) {
+    findViews(filterViews('by_', function (err, availableViews) {
       if (err) {
         res.json(502, { error: "bad_gateway", reason: err.code });
         return;
