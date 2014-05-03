@@ -46,7 +46,7 @@ module.exports = function (config, app) {
       let views = yield get(config.bookdb + '_design/books/');
       console.log("views: " + JSON.stringify(views));
       return yield views.views;
-    });
+    })();
   }
 
   function filterViews(views, filterBy) {
@@ -70,7 +70,7 @@ module.exports = function (config, app) {
   app.get('/api/search/book/by_:view', function (req, res) {
     Q.async(function*() {
       let qRequest, views, filteredViews, body, books = {};
-      views = yield findViews()();
+      views = yield findViews();
       filteredViews = filterViews(views, 'by_');
       viewNotAvailable(filteredViews, 'by_' + req.params.view);
       qRequest = asyncRequest(request);
