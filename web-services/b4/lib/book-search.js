@@ -39,9 +39,9 @@ function asyncRequest(request) {
 
 module.exports = function (config, app) {
 
-  function findViews(res) {
+  function findViews() {
     console.log('find views');
-    let get = asyncRequest(request.get, res);
+    let get = asyncRequest(request.get);
     return Q.async(function*() {
       let views = yield get(config.bookdb + '_design/books/');
       console.log("views: " + JSON.stringify(views));
@@ -69,11 +69,11 @@ module.exports = function (config, app) {
 
   app.get('/api/search/book/by_:view', function (req, res) {
     Q.async(function*() {
-      let qRequest, views, filteredViews, values, couchRes, body, books = {};
-      views = yield findViews(res)();
+      let qRequest, views, filteredViews, body, books = {};
+      views = yield findViews()();
       filteredViews = filterViews(views, 'by_');
       viewNotAvailable(filteredViews, 'by_' + req.params.view);
-      qRequest = asyncRequest(request, res);
+      qRequest = asyncRequest(request);
       body = yield qRequest({
         method: 'GET',
         url: config.bookdb + '_design/books/_view/by_' + req.params.view,
