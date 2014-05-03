@@ -14,28 +14,28 @@
 'use strict';
 const
   request = require('request'),
+  Q = require('q'),
   underscore = require('underscore');
 
 module.exports = function (config, app) {
 
-  function findViews(callback) {
+  function findViews(callback, res) {
     console.log('find books');
-    request({
-      method: 'GET',
-      url: config.bookdb + '_design/books/'
-    }, function (err, couchRes, body) {
-      if (err) {
-        console.log('error finding available views: ' + err);
-        callback(502, { error: "bad_gateway", reason: err.code });
-        return;
-      }
+    let get = Q.denodeify(request.get);
+    Q.async(function*() {
+      let
+        args = yield get(config.bookdb + '_design/books/'),
+        couchRes = args[0],
+        body = args[1];
       if (couchRes.statusCode !== 200) {
         console.log('couch error finding available views: ' + couchRes.statusCode);
         callback(couchRes.statusCode, JSON.parse(body));
         return;
       }
-      console.log('found views: ' + body);
       callback(null, JSON.parse(body).views);
+    })().catch(function(err) {
+      console.log('error finding available views: ' + err);
+      callback(502, { error: "bad_gateway", reason: err.code });
     });
   }
 
@@ -43,6 +43,7 @@ module.exports = function (config, app) {
     return function(err, views) {
       if (err) {
         console.log(err);
+        callback(err);
         return;
       }
       let filteredViews = underscore.chain(views)
@@ -53,19 +54,6 @@ module.exports = function (config, app) {
       callback(null, filteredViews);
     };
   }
-
-  var ex_view = {
-    "_id": "_design/books",
-    "_rev": "1-81dd5364f1595d7d4404536462397004",
-    "views": {
-      "by_author": {
-        "map": "function (doc) {\n      if (doc.authors) {\n        doc.authors.forEach(emit);\n      }\n    }",
-        "reduce": "_count"},
-      "by_subject": {
-        "map": "function (doc) {\n      if ('subjects' in doc) {\n        doc.subjects.forEach(function(subject){\n          emit(subject, subject);\n\n          subject.split(/\\s+--\\s+/).forEach(function(part){\n            emit(part, subject);\n          });\n        });\n      }\n    }",
-        "reduce": "_count"}
-    }
-  };
 
   function viewNotAvailable(availableViewNames, viewName) {
     return !underscore.contains(availableViewNames, viewName);
@@ -112,6 +100,6 @@ module.exports = function (config, app) {
 
       });
 
-    }));
+    }), res);
   });
 };
