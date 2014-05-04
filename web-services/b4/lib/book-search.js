@@ -33,7 +33,7 @@ function asyncRequest(request) {
       };
     }
     console.log("requested value: " + body);
-    return yield JSON.parse(body);
+    return JSON.parse(body);
   });
 }
 
@@ -45,7 +45,7 @@ module.exports = function (config, app) {
     return Q.async(function*() {
       let views = yield get(config.bookdb + '_design/books/');
       console.log("views: " + JSON.stringify(views));
-      return yield views.views;
+      return views.views;
     })();
   }
 
