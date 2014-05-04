@@ -93,10 +93,9 @@ module.exports = function (config, app) {
 
   app.get('/api/search/book/by_:view', function (req, res) {
     Q.async(function*() {
-      let qRequest, views, filteredViews, body, books = {};
-      views = yield findViews();
-      filteredViews = filterViews(views, 'by_');
-      viewNotAvailable(filteredViews, 'by_' + req.params.view);
+      let filteredViews, body, by_Prefix = 'by_';
+      filteredViews = filterViews(yield findViews(), by_Prefix);
+      viewNotAvailable(filteredViews, by_Prefix + req.params.view);
       body = yield retrieveBooksView(req.params.view, req.query.q);
       res.json(bookTitlesById(body));
     })()
