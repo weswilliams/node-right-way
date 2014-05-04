@@ -49,6 +49,22 @@ module.exports = function (config, app) {
     })();
   }
 
+  function retrieveBooksView(viewName, key) {
+    return Q.async(function*() {
+      let
+        qRequest = asyncRequest(request);
+      return yield qRequest({
+        method: 'GET',
+        url: config.bookdb + '_design/books/_view/by_' + viewName,
+        qs: {
+          key: JSON.stringify(key),
+          reduce: false,
+          include_docs: true
+        }
+      });
+    })();
+  }
+
   function filterViews(views, filterBy) {
     let filteredViews = underscore.chain(views)
       .keys(function (name) {
@@ -67,26 +83,22 @@ module.exports = function (config, app) {
     }
   }
 
+  function bookTitlesById(body) {
+    let books = {};
+    body.rows.forEach(function (elem) {
+      books[elem.doc._id] = elem.doc.title;
+    });
+    return books;
+  }
+
   app.get('/api/search/book/by_:view', function (req, res) {
     Q.async(function*() {
       let qRequest, views, filteredViews, body, books = {};
       views = yield findViews();
       filteredViews = filterViews(views, 'by_');
       viewNotAvailable(filteredViews, 'by_' + req.params.view);
-      qRequest = asyncRequest(request);
-      body = yield qRequest({
-        method: 'GET',
-        url: config.bookdb + '_design/books/_view/by_' + req.params.view,
-        qs: {
-          key: JSON.stringify(req.query.q),
-          reduce: false,
-          include_docs: true
-        }
-      });
-      body.rows.forEach(function (elem) {
-        books[elem.doc._id] = elem.doc.title;
-      });
-      res.json(books);
+      body = yield retrieveBooksView(req.params.view, req.query.q);
+      res.json(bookTitlesById(body));
     })()
       .catch(function (err) {
         console.log('error finding available books: ' + JSON.stringify(err));
