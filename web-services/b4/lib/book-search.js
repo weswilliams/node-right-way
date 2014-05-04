@@ -51,8 +51,7 @@ module.exports = function (config, app) {
 
   function retrieveBooksView(viewName, key) {
     return Q.async(function*() {
-      let
-        qRequest = asyncRequest(request);
+      let qRequest = asyncRequest(request);
       return yield qRequest({
         method: 'GET',
         url: config.bookdb + '_design/books/_view/by_' + viewName,
@@ -91,6 +90,17 @@ module.exports = function (config, app) {
     return books;
   }
 
+  function resErrorHandler(res) {
+    return function (err) {
+      console.log('error finding available books: ' + JSON.stringify(err));
+      if (err.reason && err.code) {
+        res.json(err.code, err);
+      } else {
+        res.json(502, { error: "bad_gateway", reason: err.code });
+      }
+    };
+  }
+
   app.get('/api/search/book/by_:view', function (req, res) {
     Q.async(function*() {
       let filteredViews, body, by_Prefix = 'by_';
@@ -98,14 +108,6 @@ module.exports = function (config, app) {
       viewNotAvailable(filteredViews, by_Prefix + req.params.view);
       body = yield retrieveBooksView(req.params.view, req.query.q);
       res.json(bookTitlesById(body));
-    })()
-      .catch(function (err) {
-        console.log('error finding available books: ' + JSON.stringify(err));
-        if (err.reason && err.code) {
-          res.json(err.code, err);
-        } else {
-          res.json(502, { error: "bad_gateway", reason: err.code });
-        }
-      });
+    })().catch(resErrorHandler(res));
   });
 };
